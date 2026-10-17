@@ -1,5 +1,7 @@
 # clickhouse-lexer-sys
 
+[![CI](https://github.com/s5dsn-eqee/clickhouse-lexer-sys/actions/workflows/ci.yml/badge.svg)](https://github.com/s5dsn-eqee/clickhouse-lexer-sys/actions/workflows/ci.yml)
+[![Sync](https://github.com/s5dsn-eqee/clickhouse-lexer-sys/actions/workflows/sync.yml/badge.svg)](https://github.com/s5dsn-eqee/clickhouse-lexer-sys/actions/workflows/sync.yml)
 [![crates.io](https://img.shields.io/crates/v/clickhouse-lexer-sys.svg)](https://crates.io/crates/clickhouse-lexer-sys)
 [![docs.rs](https://docs.rs/clickhouse-lexer-sys/badge.svg)](https://docs.rs/clickhouse-lexer-sys)
 
