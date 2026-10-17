@@ -40,7 +40,9 @@ jobs:
             exit 1
           fi
           # Re-running for an already published version only (re)creates the release.
-          if curl -sSf "https://crates.io/api/v1/crates/clickhouse-lexer-sys/$version" >/dev/null; then
+          # The sparse index is what cargo publish itself consults; the JSON API rejects
+          # requests without a descriptive User-Agent.
+          if curl -sSf https://index.crates.io/cl/ic/clickhouse-lexer-sys | grep -q "\"vers\":\"$version\""; then
             echo "publish=no" >> "$GITHUB_OUTPUT"
           else
             echo "publish=yes" >> "$GITHUB_OUTPUT"
