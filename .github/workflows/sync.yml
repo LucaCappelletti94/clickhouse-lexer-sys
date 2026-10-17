@@ -1,0 +1,92 @@
+name: Sync from clickhouse-lexer
+
+# Weekly: copy upstream/ from the latest ClickHouse/clickhouse-lexer release. If the
+# sources changed, bump the patch version, run the tests, and open a pull request.
+# Publishing happens when the merged version is tagged, see release.yml.
+
+on:
+  schedule:
+    - cron: "0 6 * * 1" # Mondays 06:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: write # self re-enable (see below)
+
+concurrency:
+  group: sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # GitHub disables cron workflows after 60 days without repository activity;
+      # re-enabling is idempotent and counts as activity.
+      - name: Keep the schedule alive
+        run: gh api -X PUT "repos/${{ github.repository }}/actions/workflows/sync.yml/enable"
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Sync upstream/ from the latest release
+        id: sync
+        run: |
+          set +e
+          bash scripts/sync.sh
+          status=$?
+          set -e
+          case $status in
+            0) echo "changed=true" >> "$GITHUB_OUTPUT" ;;
+            2) echo "changed=false" >> "$GITHUB_OUTPUT" ;;
+            *) exit $status ;;
+          esac
+          echo "tag=$(cat upstream/VERSION)" >> "$GITHUB_OUTPUT"
+          echo "commit=$(cat upstream/COMMIT)" >> "$GITHUB_OUTPUT"
+
+      - if: steps.sync.outputs.changed == 'true'
+        uses: dtolnay/rust-toolchain@stable
+      - if: steps.sync.outputs.changed == 'true'
+        uses: taiki-e/install-action@cargo-edit
+
+      - if: steps.sync.outputs.changed == 'true'
+        name: Bump the patch version
+        id: bump
+        run: |
+          cargo set-version --bump patch
+          version=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].version')
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - if: steps.sync.outputs.changed == 'true'
+        name: Test with the new sources
+        run: cargo test
+
+      - if: steps.sync.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          # Pull requests opened with github.token do not trigger CI; set SYNC_TOKEN
+          # to a personal access token with repo scope to have CI run on them.
+          token: ${{ secrets.SYNC_TOKEN || github.token }}
+          branch: sync/${{ steps.sync.outputs.tag }}
+          commit-message: "Sync lexer from clickhouse-lexer ${{ steps.sync.outputs.tag }}"
+          title: "Sync lexer from clickhouse-lexer ${{ steps.sync.outputs.tag }}"
+          body: |
+            Lexer sources synced from [ClickHouse/clickhouse-lexer ${{ steps.sync.outputs.tag }}](https://github.com/ClickHouse/clickhouse-lexer/releases/tag/${{ steps.sync.outputs.tag }}), which mirrors [ClickHouse/ClickHouse@${{ steps.sync.outputs.commit }}](https://github.com/ClickHouse/ClickHouse/commit/${{ steps.sync.outputs.commit }}).
+
+            Crate version bumped to ${{ steps.bump.outputs.version }}. After merging, push the tag `v${{ steps.bump.outputs.version }}` to publish.
+          delete-branch: true
+
+      # An unmerged sync pull request for an older release is obsolete once a newer one exists.
+      - if: steps.sync.outputs.changed == 'true'
+        name: Close superseded sync pull requests
+        run: |
+          gh pr list --state open --json number,headRefName \
+            --jq '.[] | select(.headRefName | startswith("sync/")) | select(.headRefName != "sync/" + env.TAG) | .number' \
+          | while read -r number; do
+              gh pr close "$number" --delete-branch --comment "Superseded by the sync of $TAG."
+            done
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.sync.outputs.tag }}

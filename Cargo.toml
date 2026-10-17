@@ -1,0 +1,17 @@
+[package]
+name = "clickhouse-lexer-sys"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.74"
+description = "Rust bindings to ClickHouse's SQL lexer, vendored unchanged from ClickHouse/clickhouse-lexer"
+license = "Apache-2.0"
+repository = "https://github.com/s5dsn-eqee/clickhouse-lexer-sys"
+documentation = "https://docs.rs/clickhouse-lexer-sys"
+readme = "README.md"
+keywords = ["clickhouse", "sql", "lexer", "tokenizer", "ffi"]
+categories = ["external-ffi-bindings", "parsing"]
+links = "clickhouse_lexer"
+exclude = ["/.github", "/scripts"]
+
+[build-dependencies]
+cc = "1"

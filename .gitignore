@@ -1,0 +1,23 @@
+# Cargo
+/target
+/Cargo.lock
+
+# Editors and IDEs
+.vscode/
+.idea/
+*.iml
+.fleet/
+.zed/
+*.swp
+*.swo
+*~
+.project
+.settings/
+.vs/
+
+# Claude Code
+.claude/
+
+# OS
+.DS_Store
+Thumbs.db
